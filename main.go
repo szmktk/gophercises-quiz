@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -15,13 +16,18 @@ var (
 	wrongAnswers   int
 )
 
+type Question struct {
+	question string
+	answer   string
+}
+
 func main() {
 	fileName, _, shuffle := parseUserInput()
-	data := readQuestions(fileName)
+	questions := readQuestions(fileName)
 	if shuffle {
-		scramble(data)
+		scramble(questions)
 	}
-	mainLoop(data)
+	mainLoop(questions)
 	fmt.Printf("You scored %d out of %d.\n", correctAnswers, correctAnswers+wrongAnswers)
 }
 
@@ -33,7 +39,7 @@ func parseUserInput() (string, int, bool) {
 	return *csvPath, *timeLimit, *shuffle
 }
 
-func readQuestions(fileName string) [][]string {
+func readQuestions(fileName string) []Question {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatalf("Error: %v", err)
@@ -47,10 +53,18 @@ func readQuestions(fileName string) [][]string {
 		log.Fatalf("Error reading CSV data: %v", err)
 	}
 
-	return data
+	questions := make([]Question, len(data))
+	for idx, line := range data {
+		questions[idx] = Question{
+			question: line[0],
+			answer:   strings.TrimSpace(line[1]),
+		}
+	}
+
+	return questions
 }
 
-func scramble(data [][]string) {
+func scramble(data []Question) {
 	source := rand.NewSource(time.Now().UnixNano())
 	random := rand.New(source)
 	random.Shuffle(len(data), func(i, j int) {
@@ -58,13 +72,13 @@ func scramble(data [][]string) {
 	})
 }
 
-func mainLoop(data [][]string) {
-	for idx, line := range data {
-		fmt.Printf("Problem #%d: %s = ", idx+1, line[0])
+func mainLoop(data []Question) {
+	for idx, question := range data {
+		fmt.Printf("Problem #%d: %s = ", idx+1, question.question)
 		var answer string
 		fmt.Scan(&answer)
 
-		if answer == line[1] {
+		if answer == question.answer {
 			correctAnswers++
 		} else {
 			wrongAnswers++
