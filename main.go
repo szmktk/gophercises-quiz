@@ -22,13 +22,14 @@ type Question struct {
 }
 
 func main() {
-	fileName, _, shuffle := parseUserInput()
+	fileName, timeLimit, shuffle := parseUserInput()
 	questions := readQuestions(fileName)
+
 	if shuffle {
 		scramble(questions)
 	}
-	mainLoop(questions)
-	fmt.Printf("You scored %d out of %d.\n", correctAnswers, correctAnswers+wrongAnswers)
+
+	mainLoop(questions, timeLimit)
 }
 
 func parseUserInput() (string, int, bool) {
@@ -72,16 +73,29 @@ func scramble(data []Question) {
 	})
 }
 
-func mainLoop(data []Question) {
-	for idx, question := range data {
-		fmt.Printf("Problem #%d: %s = ", idx+1, question.question)
-		var answer string
-		fmt.Scan(&answer)
+func mainLoop(questions []Question, timeLimit int) {
+	timer := time.NewTimer(time.Duration(timeLimit) * time.Second)
 
-		if answer == question.answer {
-			correctAnswers++
-		} else {
-			wrongAnswers++
+	for idx, question := range questions {
+		fmt.Printf("Problem #%d: %s = ", idx+1, question.question)
+
+		answerChannel := make(chan string)
+		go func() {
+			var answer string
+			fmt.Scan(&answer)
+			answerChannel <- answer
+		}()
+
+		select {
+		case <-timer.C:
+			fmt.Printf("\nYou scored %d out of %d.\n", correctAnswers, len(questions))
+			return
+		case answer := <-answerChannel:
+			if answer == question.answer {
+				correctAnswers++
+			} else {
+				wrongAnswers++
+			}
 		}
 	}
 }
