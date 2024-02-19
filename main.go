@@ -21,18 +21,32 @@ type Question struct {
 	answer   string
 }
 
+type DefaultConfigurator struct{}
+type CsvReader struct{}
+type RandomScrambler struct{}
+type ConsoleRunner struct{}
+
 func main() {
-	fileName, timeLimit, shuffle := parseUserInput()
-	questions := readQuestions(fileName)
+	configurator := DefaultConfigurator{}
+	reader := CsvReader{}
+	scrambler := RandomScrambler{}
+	runner := ConsoleRunner{}
 
-	if shuffle {
-		scramble(questions)
-	}
-
-	mainLoop(questions, timeLimit)
+	runQuizApp(configurator, reader, scrambler, runner)
 }
 
-func parseUserInput() (string, int, bool) {
+func runQuizApp(configurator QuizConfigurator, reader QuestionReader, scrambler QuestionScrambler, runner QuizRunner) {
+	fileName, timeLimit, shuffle := configurator.ParseUserInput()
+	questions := reader.ReadQuestions(fileName)
+
+	if shuffle {
+		scrambler.Scramble(questions)
+	}
+
+	runner.MainLoop(questions, timeLimit)
+}
+
+func (DefaultConfigurator) ParseUserInput() (string, int, bool) {
 	csvPath := flag.String("csv", "problems.csv", "a csv file in the format of 'question,answer'")
 	timeLimit := flag.Int("limit", 30, "the time limit for the quiz in seconds")
 	shuffle := flag.Bool("shuffle", false, "shuffle the order of questions")
@@ -40,7 +54,7 @@ func parseUserInput() (string, int, bool) {
 	return *csvPath, *timeLimit, *shuffle
 }
 
-func readQuestions(fileName string) []Question {
+func (CsvReader) ReadQuestions(fileName string) []Question {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatalf("Error: %v", err)
@@ -65,7 +79,7 @@ func readQuestions(fileName string) []Question {
 	return questions
 }
 
-func scramble(data []Question) {
+func (RandomScrambler) Scramble(data []Question) {
 	source := rand.NewSource(time.Now().UnixNano())
 	random := rand.New(source)
 	random.Shuffle(len(data), func(i, j int) {
@@ -73,7 +87,7 @@ func scramble(data []Question) {
 	})
 }
 
-func mainLoop(questions []Question, timeLimit int) {
+func (ConsoleRunner) MainLoop(questions []Question, timeLimit int) {
 	timer := time.NewTimer(time.Duration(timeLimit) * time.Second)
 
 	for idx, question := range questions {
@@ -98,4 +112,6 @@ func mainLoop(questions []Question, timeLimit int) {
 			}
 		}
 	}
+
+	fmt.Printf("\nYou scored %d out of %d.\n", correctAnswers, len(questions))
 }
